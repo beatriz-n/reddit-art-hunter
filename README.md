@@ -1,76 +1,135 @@
 # Reddit Art Hunter
 
-Base local do projeto: frontend React + TypeScript, API FastAPI, PostgreSQL com SQLAlchemy/Alembic. A Fase 4 inclui cadastro de subreddits, filtros, histórico e coleta manual somente pela API oficial.
+Aplicação local para organizar seu perfil artístico e acompanhar comunidades do Reddit que possam ter oportunidades relacionadas a comissões de arte.
+
+O projeto tem uma interface em React + TypeScript, uma API em Python + FastAPI e PostgreSQL para persistência. A integração com o Reddit usa a Data API oficial, somente para leitura, e permanece desativada até que você configure credenciais e acesso apropriado. A integração com Ollama é opcional e usa um serviço local.
+
+## Funcionalidades
+
+- Perfil artístico com estilos, categorias, temas, serviços e faixas de preço.
+- Galeria local para artes PNG, JPG, WEBP e GIF de até 15 MB.
+- Cadastro de comunidades e filtros de busca.
+- Consulta manual ao Reddit após configurar acesso aprovado à API.
+- Registro local de posts selecionados e histórico de consultas.
+- Análise de arte por Ollama quando houver um modelo local configurado.
 
 ## Requisitos
 
+- Windows 10/11 com PowerShell
 - Python 3.11 ou superior
 - Node.js 20 ou superior e npm
-- PostgreSQL local (opcional para iniciar a API; necessário para migrations e funcionalidades que persistam dados)
+- PostgreSQL local (necessário para migrations e recursos que salvam dados)
+- Ollama e um modelo compatível (opcional)
 
-## Iniciar no Windows (PowerShell)
+## Configuração
 
-1. Na pasta raiz do projeto, copie `.env.example` para `.env` e ajuste `DATABASE_URL` para um banco que você criar. O backend fica em `backend/`. Nenhum banco ou migration é criado automaticamente.
-2. Backend:
+1. Na pasta do projeto, copie o arquivo de exemplo:
+
+   ```powershell
+   Copy-Item .env.example .env
+   ```
+
+2. Edite `.env` e ajuste `DATABASE_URL` para um banco criado especificamente para o Reddit Art Hunter. Exemplo:
+
+   ```env
+   DATABASE_URL=postgresql+psycopg://usuario:senha@localhost:5432/reddit_art_hunter
+   ```
+
+   Não use um banco de outro projeto. Crie primeiro o banco vazio no PostgreSQL. A aplicação não cria bancos nem executa migrations automaticamente.
+
+3. Instale as dependências do backend e aplique as migrations no banco configurado:
 
    ```powershell
    cd backend
    py -3.11 -m venv .venv
    .\.venv\Scripts\Activate.ps1
    python -m pip install -e ".[dev]"
-   uvicorn app.main:app --reload
+   alembic upgrade head
    ```
 
-   A API estará em `http://127.0.0.1:8000`; documentação em `/docs`; saúde em `/api/v1/health`.
-   O `.env` pode ficar na raiz ou em `backend/`. A configuração de banco só é usada ao inicializar sessões ou rodar Alembic.
-3. Frontend, em outro terminal:
+4. Instale as dependências do frontend em outro terminal:
 
    ```powershell
    cd frontend
    npm install
-   npm run dev
    ```
 
-   Abra o endereço exibido pelo Vite. O proxy encaminha `/api` para o backend local.
+## Executar localmente
 
-### Esta instalação
+Abra dois terminais PowerShell na pasta do projeto.
 
-O `.env` da raiz já está configurado com a conexão local informada. Para preservar o Bookverse, o Reddit Art Hunter usa um banco separado chamado `reddit_art_hunter`; as migrations até a Fase 4 já foram aplicadas nesse banco vazio. O banco `bookverse` não foi alterado.
+No primeiro, inicie a API:
 
-Os serviços já estão iniciados nesta sessão:
-
-- Interface: <http://127.0.0.1:5173>
-- API: <http://127.0.0.1:8000>
-- Documentação da API: <http://127.0.0.1:8000/docs>
-
-Para iniciar novamente depois de fechar os serviços, abra dois terminais PowerShell na pasta do projeto. No primeiro, execute `cd backend`, `.\.venv\Scripts\Activate.ps1` e `uvicorn app.main:app --reload`. No segundo, execute `cd frontend` e `npm run dev -- --host 127.0.0.1`. Não é necessário repetir a migration.
-
-Na página **Meu perfil artístico**, cadastre estilos, categorias e temas, envie artes (PNG/JPG/WEBP/GIF até 15 MB) e registre seus serviços e faixas de preço. Os arquivos ficam em `data/artworks/`; remova artes pela própria galeria. Em **Monitor de comunidades**, cadastre subreddits e filtros; uma busca manual só fica habilitada após preencher as credenciais e aprovação.
-
-## Banco de dados
-
-Crie manualmente um banco vazio, por exemplo `reddit_art_hunter`, e configure uma URL no formato:
-
-```text
-postgresql+psycopg://usuario:senha@localhost:5432/reddit_art_hunter
+```powershell
+cd backend
+.\.venv\Scripts\Activate.ps1
+uvicorn app.main:app --reload
 ```
 
-Depois de ajustar `DATABASE_URL` e confirmar que aponta para o banco correto, rode `alembic upgrade head` em `backend/`. A migração `0004` adiciona comunidades, posts selecionados e histórico de consultas. O comando nunca é executado automaticamente. Não é necessário instalar pgvector nesta fase.
+No segundo, inicie a interface:
 
-## Verificações
+```powershell
+cd frontend
+npm run dev
+```
 
-No backend: `python -m pytest`. No frontend: `npm test` (Vitest) e `npm run build`.
+Abra o endereço local informado pelo Vite, normalmente <http://localhost:5173>. A API fica em <http://127.0.0.1:8000>, a documentação interativa em <http://127.0.0.1:8000/docs> e o endpoint de saúde em <http://127.0.0.1:8000/api/v1/health>.
 
-## Limites desta fase
+## Integração com Reddit
 
-O projeto não instala Ollama nem baixa modelos automaticamente. O runtime Ollama foi instalado nesta máquina na Fase 3; nenhum modelo foi baixado. Depois de escolher um modelo multimodal que caiba no seu hardware, defina `OLLAMA_MODEL`; para embeddings de texto, defina `OLLAMA_EMBEDDING_MODEL` e reinicie a API. A página do perfil mostra o estado da conexão e permite analisar cada arte. As respostas estruturadas e o modelo usado ficam registrados no banco.
+O cadastro ou login no Reddit, por si só, não fornece ao projeto um token de API. A coleta exige credenciais de aplicativo e autorização de acesso válidas para o uso pretendido. Se o objetivo envolver encontrar clientes para comissões pagas, confirme com o Reddit se esse caso requer acesso comercial.
 
-Ollama deve continuar local em `http://localhost:11434`; a API rejeita endereços remotos. Só são usados modelos já instalados. A integração de embeddings nesta fase recebe texto; a análise visual produz descrições que poderão ser comparadas com embeddings textuais em uma etapa posterior. A extensão pgvector e a escolha dos modelos ainda não foram feitas.
+Depois de obter a autorização adequada, preencha no `.env`:
 
-### Reddit Data API
+```env
+REDDIT_ACCESS_TOKEN=seu_token
+REDDIT_USER_AGENT=RedditArtHunter/0.1 (aplicativo local)
+REDDIT_API_APPROVED=true
+```
 
-O sistema é local e de usuário único. Para consultar a Data API, o Reddit ainda exige cadastro do aplicativo e acesso autorizado para o caso de uso. Se o uso envolver encontrar clientes para comissões pagas, confirme com o Reddit se exige autorização comercial. Após obter o acesso apropriado, configure `REDDIT_ACCESS_TOKEN`, `REDDIT_USER_AGENT` identificável e `REDDIT_API_APPROVED=true` no `.env`, reinicie a API e use **Buscar agora**. O cliente faz apenas leitura via OAuth; não usa scraping, não publica e não envia mensagens. A aplicação armazena apenas título, corpo, permalink e datas essenciais, sem nome do autor. Consulte as [regras para desenvolvedores e uso comercial](https://support.reddithelp.com/hc/en-us/articles/14945211791892-Developer-Platform-Accessing-Reddit-Data) e os [Data API Terms](https://redditinc.com/policies/data-api-terms).
+Reinicie a API e use **Buscar agora** no monitor de comunidades. O cliente faz consultas somente de leitura: não publica, não envia mensagens e não usa scraping. Configure o token apenas no `.env`, que está excluído do Git.
 
-Na tela **Monitor de comunidades**, você já pode cadastrar comunidades e filtros. A coleta fica bloqueada até o Reddit aprovar o acesso apropriado e você configurar o token. Nota: o Reddit anunciou que não aceita novos pedidos de acesso à API pública a partir de 31 de outubro de 2026; apps públicos existentes estão sendo migrados ao Developer Platform. Confira o [aviso oficial e o cronograma](https://support.reddithelp.com/hc/en-us/articles/54353370049684-Changelog-October-8-2026). O login no Developer Platform não fornece credenciais para um script externo como este; veja a [FAQ oficial](https://developers.reddit.com/docs/guides/faq).
+Consulte as [regras para desenvolvedores e uso comercial](https://support.reddithelp.com/hc/en-us/articles/14945211791892-Developer-Platform-Accessing-Reddit-Data), os [termos da Data API](https://redditinc.com/policies/data-api-terms) e os [avisos oficiais de acesso à API](https://support.reddithelp.com/hc/en-us/articles/54353370049684-Changelog-October-8-2026). As regras de acesso podem mudar; confirme a situação atual diretamente com o Reddit.
 
-Para instalar o runtime Ollama no Windows, use o instalador oficial e confira os requisitos de GPU antes de escolher modelos: [instruções oficiais para Windows](https://docs.ollama.com/windows). O runtime precisa de pelo menos 4 GB de espaço; os modelos exigem espaço adicional e não são baixados pelo projeto.
+## Integração com Ollama (opcional)
+
+O Ollama deve estar instalado e rodando localmente em `http://localhost:11434`. O projeto não instala o Ollama nem baixa modelos automaticamente. Depois de instalar localmente um modelo compatível, preencha `OLLAMA_MODEL` no `.env`. Para embeddings de texto, configure também `OLLAMA_EMBEDDING_MODEL`. Reinicie a API após alterar as variáveis.
+
+```env
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=
+OLLAMA_EMBEDDING_MODEL=
+```
+
+## Dados e privacidade
+
+- O `.env` contém configurações privadas e não deve ser enviado ao GitHub.
+- Artes e arquivos de trabalho são armazenados localmente em `data/` e não são incluídos no Git.
+- Use credenciais e tokens somente no `.env`; não os inclua em issues, commits ou capturas de tela.
+- A aplicação foi projetada para uso local e individual. Tornar o código público no GitHub não hospeda a aplicação nem torna os dados locais públicos.
+
+## Verificações de desenvolvimento
+
+No backend:
+
+```powershell
+cd backend
+python -m pytest
+```
+
+No frontend:
+
+```powershell
+cd frontend
+npm test
+npm run build
+```
+
+## Estrutura
+
+```text
+backend/       API FastAPI, modelos SQLAlchemy, migrations Alembic e testes
+frontend/      interface React + TypeScript
+data/          arquivos de arte e dados locais (não versionados)
+.env.example   modelo de configuração sem credenciais
+```
